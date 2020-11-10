@@ -136,12 +136,13 @@ void InitJ1939Name(void)
 }
 
 
-//IMPLEMENTACIÓN DE LAS FUNCIONES PARA SPN Y PGN
+//#####################################    IMPLEMENTACIÓN DE LAS FUNCIONES PARA SPN Y PGN     ###########################################
 //PARAMETROS PGN
 #define PGN_DASH_DISPLAY                   0xFEFC
 #DEFINE PGN_ELECTRONIC_ENGINE_CONTROLLER_1 0XF004
 #DEFINE PGN_FUEL_ECONOMY                   0XFEF2
 #DEFINE PGN_ENGINE_TEMPERATURE             0XFEEE
+#DEFINE PGN_VEHICLE_POSITION               65267
 
 
 //PARAMETROS SPN
@@ -153,38 +154,101 @@ void InitJ1939Name(void)
 #DEFINE SPN_ENGINE_OIL_TEMPERATURE_1      175
 #DEFINE SPN_ENGINE_FUEL_RATE              183
 #DEFINE SPN_ENGINE_SPEED                  190
+#DEFINE SPN_LATITUDE                          584
+#DEFINE SPN_LONGITUDE                         585
 
 
 
+// FUNCIONES PARA EL CALCULO DE LAS SEÑALES 
+
+int16 engineFuelRate(int8 Bytes[]){ /*PGN = 65266 = 0xFEF2   IDE = 18FEF200*/
+    float resolution  = 0.05;
+    float offset      = 0;
+    int16 auxFuelRate   = 0; /*ENTERO PARA DESPLAZAR LUEGO LOS BITS*/
+    float fuelRate    = 0;
+        auxFuelRate   = Bytes[0]; /*Bytes[1]*/
+        auxFuelRate   = auxFuelRate<<8 | Bytes[1]; /*Bytes[2]*/
+        fuelRate      = auxFuelRate*resolution + offset;
+    return (int16)fuelRate;
+}
+
+int16 fuelTemperature (int8 Bytes[]){ /*PGN = 65262 = 0xFEEE  IDE=0x18FEEE00*/
+    float resolution         =   1;
+    float offset             = -40;
+    float fuelTemperature    =   0;
+          fuelTemperature    = Bytes[1]*resolution + offset; /*#define FUEL_TEMPERATURE  1*/
+    return (int16)fuelTemperature;
+}
 
 
-void lecturaDelParametro(int16 pgn, int spn, int16* dato)
+int16 engineSpeed(int8 Bytes[]){ /*PGN = 61444 = 0xF004   IDE=0x18F00400*/
+    float resolution  = 0.125;
+    float offset      = 0;
+    float velocidad   = 0;
+    int16 auxVelocidad  = 0;                                       /*DECLARACION ENTERA PARA DESPLAZAR LOS BITS*/
+        auxVelocidad  = Bytes[3];                   /*#define ENGINE_SPEED_HIGH 3 , Bytes_4*/
+        auxVelocidad  = auxVelocidad <<8 | Bytes[4]; /*#define ENGINE_SPEED_LOW  4 , Bytes_5*/
+        velocidad     = auxVelocidad*resolution + offset;
+    return (int16)velocidad;
+}
+
+int16 fuelLevel(int8 Bytes[]){
+    /*DATOS*/
+    float resolution = 0.4;
+    float offset     = 0;
+    /*VARIABLES AUXILIARES*/
+    float nivelCombustible=0;
+    /*FORMULACION O PREVIA*/
+    nivelCombustible= ((float)Bytes[1])*resolution + offset;
+    /*ASIGNACION*/
+    /*RETORNO*/
+    return (int16)nivelCombustible;
+}
+
+int16 throttlePosition(int8 Bytes[]){ /*PGN = 65266 = 0xFEF2  IDE = 0x18FEF200*/
+    float resolution  = 0.4;
+    float offset      = 0;
+    float throttleAux;
+          throttleAux     = Bytes[6]*resolution + offset; /*#define THROTTLE          6*/
+    return (int16)throttleAux;
+}
+
+void lecturaDelParametro(int16 pgn, int spn, int8 Bytes[], int16* dato)
 {  
-   
    switch (pgn)
    {
       case PGN_DASH_DISPLAY: 
             switch (spn)
             {
-               case SPN_FUEL_LEVEL_1:  *dato = SPN_FUEL_LEVEL_1; break;
+               case SPN_FUEL_LEVEL_1:  *dato = fuelLevel(Bytes); break;
+               default: *dato = 0;
             }
             break;
             //FIN DE PGN_DASH_DISPLAY
       case PGN_ELECTRONIC_ENGINE_CONTROLLER_1: 
+            switch(spn)
+            {
+               case SPN_ENGINE_SPEED : *dato = engineSpeed(Bytes); break;
+               default:*dato = 0;
+               
+            }
                
             break;
       case PGN_FUEL_ECONOMY: 
             switch(spn)
             {
-               case SPN_ENGINE_FUEL_RATE: *dato = SPN_ENGINE_FUEL_RATE; break; 
+               case SPN_ENGINE_FUEL_RATE:          *dato = engineFuelRate(Bytes); break;
+               case SPN_ENGINE_THROTTLE_POSITION:  *dato = throttlePosition(Bytes); break;
+               default:*dato = 0;
             }
            break;
       case PGN_ENGINE_TEMPERATURE: 
            switch (spn)
            {
             case SPN_ENGINE_COOLANT_TEMPERATURE:   *dato = SPN_ENGINE_COOLANT_TEMPERATURE; break;
-            case SPN_ENGINE_FUEL_TEMPERATURE_1:    *dato = SPN_ENGINE_FUEL_TEMPERATURE_1;  break;
+            case SPN_ENGINE_FUEL_TEMPERATURE_1:    *dato = fuelTemperature (Bytes);  break;
             case SPN_ENGINE_OIL_TEMPERATURE_1:     *dato = SPN_ENGINE_OIL_TEMPERATURE_1;   break;
+            default:*dato = 0;
            }
             break;
       
@@ -201,7 +265,7 @@ void J1939Task(void)
 {  
    int16 dato; 
    int16 pgn;
-   uint8_t i;
+   //uint8_t i;
    uint8_t Data[8];
    uint8_t Length;
    J1939_PDU_STRUCT Message;
@@ -216,21 +280,36 @@ void J1939Task(void)
       pgn = Message.PDUFormat;
       pgn = pgn <<8 | (int16)Message.DestinationAddress;
       
-      printf ("La PGN es: %LX \r",pgn);
+     /* printf ("La PGN es: %LX \r",pgn);
       
       printf(" Dirección fuente: %x \r", Message.SourceAddress);
-      delay_ms(50); 
+      delay_ms(50); */
       
-       lecturaDelParametro(pgn,SPN_ENGINE_FUEL_RATE, &dato );
-     printf("El dato recuperado es: %ld \r", dato);
+       lecturaDelParametro(pgn,SPN_ENGINE_FUEL_RATE, Data, &dato);
+       printf("Engine Fuel Rate =         %ld \r", dato);
+       
+       //dato = 0;
+       
+       lecturaDelParametro(pgn,SPN_ENGINE_FUEL_TEMPERATURE_1, Data, &dato);
+       printf("Engine Fuel Temperature =  %ld \r", dato);
+       
+       lecturaDelParametro(pgn,SPN_ENGINE_SPEED, Data, &dato);
+       printf("Engine Speed =             %ld \r", dato);
+       
+        lecturaDelParametro(pgn,SPN_FUEL_LEVEL_1, Data, &dato);
+       printf("Fuel Level 1  =            %ld \r", dato);
       
+      lecturaDelParametro(pgn,SPN_ENGINE_THROTTLE_POSITION, Data, &dato);
+       printf("Engine Throttle Position=  %ld \r", dato);
+     // dato = 0; 
+      /*
       printf("{ ");
       for (i =0; i<Length ; i++){
          printf("%X , ",Data[i]);
       }
       printf("} \r");
       printf("\r");
-      
+      */
     
      
       
