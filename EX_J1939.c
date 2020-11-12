@@ -270,8 +270,12 @@ void J1939Task(void)
    uint8_t Length;
    J1939_PDU_STRUCT Message;
    
+   //TRANSMISOR
+   uint8_t sendData[8];
+   J1939_PDU_STRUCT MessageT;
+   
    J1939ReceiveTask();  //J1939ReceiveTask() needs to be called often
-   //J1939XmitTask();     //J1939XmitTask() needs to be called often
+   J1939XmitTask();     //J1939XmitTask() needs to be called often
    
    if(J1939Kbhit())  //Checks for new message in J1939 Receive buffer
    {
@@ -280,41 +284,45 @@ void J1939Task(void)
       pgn = Message.PDUFormat;
       pgn = pgn <<8 | (int16)Message.DestinationAddress;
       
-     /* printf ("La PGN es: %LX \r",pgn);
-      
-      printf(" Dirección fuente: %x \r", Message.SourceAddress);
-      delay_ms(50); */
-      
-       lecturaDelParametro(pgn,SPN_ENGINE_FUEL_RATE, Data, &dato);
-       printf("Engine Fuel Rate =         %ld \r", dato);
-       
-       //dato = 0;
-       
+    
+             
        lecturaDelParametro(pgn,SPN_ENGINE_FUEL_TEMPERATURE_1, Data, &dato);
        printf("Engine Fuel Temperature =  %ld \r", dato);
        
-       lecturaDelParametro(pgn,SPN_ENGINE_SPEED, Data, &dato);
-       printf("Engine Speed =             %ld \r", dato);
-       
-        lecturaDelParametro(pgn,SPN_FUEL_LEVEL_1, Data, &dato);
-       printf("Fuel Level 1  =            %ld \r", dato);
-      
-      lecturaDelParametro(pgn,SPN_ENGINE_THROTTLE_POSITION, Data, &dato);
-       printf("Engine Throttle Position=  %ld \r", dato);
-     // dato = 0; 
-      /*
-      printf("{ ");
-      for (i =0; i<Length ; i++){
-         printf("%X , ",Data[i]);
-      }
-      printf("} \r");
-      printf("\r");
-      */
-    
-     
-      
+             
    }      // END KBHIT()
    
+   
+   
+   //send message to other unit once every 250ms to toggle pin
+      MessageT.SourceAddress = g_MyJ1939Address;          //set PDU Source Address, this units address (g_MyJ1939Address)
+      MessageT.DestinationAddress = 0x00;   //set PDU Destination Address, address of other unit
+      MessageT.PDUFormat = 0xEA; /*0xEA*/                    //set PDU Formate, LED_TOGGLE command
+      MessageT.DataPage = 0;                              //set PDU Data Page can be either 0 or 1, this message uses 0
+      MessageT.ExtendedDataPage = 0;                      //set PDU Extended Data Page, must be zero for J1939 Messages
+      MessageT.Priority = J1939_CONTROL_PRIORITY;         //set Priority, can be 0 to 7 (0 highest priority) Control default is 3
+      
+      
+   
+   // Load PGN of MessageT ENGINE TEMPERATURE PGN = 0x00FEEE
+   sendData[0] = 0xEE;
+   sendData[1] = 0xFE;
+   sendData[2] = 0x00;
+   sendData[3] = 0x00;
+   sendData[4] = 0x00;
+   sendData[5] = 0x00;
+   sendData[6] = 0x00;
+   sendData[7] = 0x00;
+   
+   
+  //J1939XmitTask();     //J1939XmitTask() needs to be called often
+  
+  
+  
+   J1939PutMessage (MessageT,sendData,8);//loads J1939 Message into Xmit buffer
+   delay_ms(50);
+   printf("transmitiendo...\r");
+  
   
 }
 
@@ -338,6 +346,10 @@ void main()
 
    J1939Init();  //Initialize J1939 Driver must be called before any other J1939 function is used
    
+      
+      
+      
+      
       
    while(TRUE)
    {
