@@ -71,9 +71,8 @@ void tick_time_isr(void)
 #define J1939InitAddress()    InitJ1939Address()
 #define J1939InitName()       InitJ1939Name()
 
-//Following defines what the CAN's baud rate it, not required defaults to 250Kbit 
-//only necessary if using non standard baud rate.  Was changed to 125Kbit to
-//work on CCS CAN Bus and CAN Bus 24 development kit.
+
+//NOTA : CONFIGURACIÓN DE LA VELOCIDAD DEL BUS 
 
 //#define  Set_1000K_Baud TRUE
 //#define  Set_500K_Baud TRUE
@@ -82,8 +81,10 @@ void tick_time_isr(void)
 //#define  Set_125K_Baud True
 //#define J1939_BAUD_RATE    125000 // del original para 20Mhz
 
+
 //Following defines sets up the CAN baud rate, not required if using 250Kbit or 
 //500Kbit and clock rates of 8, 16, 20, 32 or 40MHz.
+
 #if defined(__PCD__)
 #define CAN_BRG_PRESCALAR           4
 #define CAN_BRG_PHASE_SEGMENT_1     2
@@ -326,10 +327,6 @@ void J1939Task(void)
   
 }
 
-
-
-
-
 void main()
 {
   #if defined(__PCD__)
@@ -346,11 +343,6 @@ void main()
 
    J1939Init();  //Initialize J1939 Driver must be called before any other J1939 function is used
    
-      
-      
-      
-      
-      
    while(TRUE)
    {
       J1939Task();
