@@ -143,7 +143,7 @@ void InitJ1939Name(void)
 #DEFINE PGN_ELECTRONIC_ENGINE_CONTROLLER_1 0XF004
 #DEFINE PGN_FUEL_ECONOMY                   0XFEF2
 #DEFINE PGN_ENGINE_TEMPERATURE             0XFEEE
-#DEFINE PGN_VEHICLE_POSITION               65267
+#DEFINE PGN_VEHICLE_POSITION               0xfef3 //65267
 
 
 //PARAMETROS SPN
@@ -262,6 +262,7 @@ void lecturaDelParametro(int16 pgn, int spn, int8 Bytes[], int16* dato)
 
 
 //J1939 Task function for this example
+/*
 void J1939Task(void)
 {  
    int16 dato; 
@@ -298,7 +299,7 @@ void J1939Task(void)
    //send message to other unit once every 250ms to toggle pin
       MessageT.SourceAddress = g_MyJ1939Address;          //set PDU Source Address, this units address (g_MyJ1939Address)
       MessageT.DestinationAddress = 0x00;   //set PDU Destination Address, address of other unit
-      MessageT.PDUFormat = 0xEA; /*0xEA*/                    //set PDU Formate, LED_TOGGLE command
+      MessageT.PDUFormat = 0xEA; //0xEA                    //set PDU Formate, LED_TOGGLE command
       MessageT.DataPage = 0;                              //set PDU Data Page can be either 0 or 1, this message uses 0
       MessageT.ExtendedDataPage = 0;                      //set PDU Extended Data Page, must be zero for J1939 Messages
       MessageT.Priority = J1939_CONTROL_PRIORITY;         //set Priority, can be 0 to 7 (0 highest priority) Control default is 3
@@ -326,6 +327,108 @@ void J1939Task(void)
   
   
 }
+*/
+
+
+
+void consulta(int16 mensaje, int senal, int16* respuesta){
+   int16 dato; 
+   int16 pgn= mensaje;
+   //uint8_t i;
+   uint8_t Data[8];
+   uint8_t Length;
+   J1939_PDU_STRUCT Message;
+   
+   //TRANSMISOR
+   uint8_t sendData[8];
+   J1939_PDU_STRUCT MessageT;
+   
+   J1939ReceiveTask();  //J1939ReceiveTask() needs to be called often
+   J1939XmitTask();     //J1939XmitTask() needs to be called often
+   
+   if(J1939Kbhit())  //Checks for new message in J1939 Receive buffer
+   {
+      J1939GetMessage(Message,Data,Length);  //Gets J1939 Message from receive buffer
+      
+      pgn = Message.PDUFormat;
+      pgn = pgn <<8 | (int16)Message.DestinationAddress;
+      
+    
+             
+       lecturaDelParametro(pgn,senal, Data, &dato);
+       *respuesta = dato; 
+       //printf("BUG --> Engine Fuel Temperature =  %ld \r", dato);
+       
+             
+   }      // END KBHIT()
+   
+   
+   
+   //send message to other unit once every 250ms to toggle pin
+      MessageT.SourceAddress = g_MyJ1939Address;          //set PDU Source Address, this units address (g_MyJ1939Address)
+      MessageT.DestinationAddress = 0x00;   //set PDU Destination Address, address of other unit
+      MessageT.PDUFormat = 0xEA; //0xEA                    //set PDU Formate, LED_TOGGLE command
+      MessageT.DataPage = 0;                              //set PDU Data Page can be either 0 or 1, this message uses 0
+      MessageT.ExtendedDataPage = 0;                      //set PDU Extended Data Page, must be zero for J1939 Messages
+      MessageT.Priority = J1939_CONTROL_PRIORITY;         //set Priority, can be 0 to 7 (0 highest priority) Control default is 3
+      
+      
+   
+   
+   // Configuración estandar del mensaje
+   sendData[0] = 0xEE;
+   sendData[1] = 0xFE;
+   sendData[2] = 0x00;
+   sendData[3] = 0x00;
+   sendData[4] = 0x00;
+   sendData[5] = 0x00;
+   sendData[6] = 0x00;
+   sendData[7] = 0x00; 
+   
+   
+   // ¿Qué mensaje voy a enviar por el bus?
+   // Load PGN of MessageT ENGINE TEMPERATURE PGN = 0x00FEEE
+   switch(mensaje){
+      case PGN_DASH_DISPLAY:  sendData[0] = 0xFC;
+                              sendData[1] = 0xFE;
+                              sendData[2] = 0x00;
+                              break; // 0xFEFC
+                              
+      case PGN_ELECTRONIC_ENGINE_CONTROLLER_1:  sendData[0] = 0x04;
+                                                sendData[1] = 0xF0;
+                                                sendData[2] = 0x00;
+                                                break; // 0XF004
+                                                
+      case PGN_FUEL_ECONOMY: sendData[0] = 0xF2;
+                             sendData[1] = 0xFE;
+                             sendData[2] = 0x00;
+                             break; //0XFEF2
+                             
+      case PGN_ENGINE_TEMPERATURE:  sendData[0] = 0xEE;
+                                    sendData[1] = 0xFE;
+                                    sendData[2] = 0x00; 
+                                    break; //0XFEEE
+                                    
+      case PGN_VEHICLE_POSITION: sendData[0] = 0xF3;
+                                 sendData[1] = 0xFE;
+                                 sendData[2] = 0x00; 
+                                 break; // 65267, 0xFEF3
+      
+   
+   } // FIN DEL SWITCH
+   
+  //J1939XmitTask();     //J1939XmitTask() needs to be called often
+  
+  
+  
+   J1939PutMessage (MessageT,sendData,3);//loads J1939 Message into Xmit buffer
+   delay_ms(50);
+   //printf("transmitiendo...\r");
+  
+ 
+} // FIN de Consulta PGN
+
+
 
 void main()
 {
@@ -341,11 +444,53 @@ void main()
    enable_interrupts(GLOBAL);
   #endif
 
+   int16 captura1,captura2,captura3, cap4, cap5, cap6; 
+   
    J1939Init();  //Initialize J1939 Driver must be called before any other J1939 function is used
    
    while(TRUE)
    {
-      J1939Task();
+      /*
+      Engine temperature
+      SPN_ENGINE_COOLANT_TEMPERATURE
+      SPN_ENGINE_FUEL_TEMPERATURE_1
+      SPN_ENGINE_OIL_TEMPERATURE_1
       
+      */
+       consulta(PGN_ENGINE_TEMPERATURE, SPN_ENGINE_FUEL_TEMPERATURE_1, &captura1);
+       printf("la temperatura en el main es : %ld \r", captura1);
+       delay_ms(50);
+
+       
+       
+      
+      /*
+      Dash Display
+      SPN_FUEL_LEVEL_1
+      
+      */
+       consulta(PGN_DASH_DISPLAY, SPN_FUEL_LEVEL_1, &captura2);
+       printf(" el fuel level ES -->  : %ld \r", captura2);
+       delay_ms(50);
+       
+       /*
+       Fuel Economy
+       SPN_ENGINE_FUEL_RATE
+       SPN_ENGINE_THROTTLE_POSITION:
+       */
+       consulta(PGN_FUEL_ECONOMY, SPN_ENGINE_THROTTLE_POSITION, &captura3);
+       printf("Velocidad de consumo : %ld \r", captura3);
+       delay_ms(50);
+      
+      /*
+      Electronic Engine Controller 1
+      SPN_ENGINE_SPEED
+       */
+       consulta(PGN_ELECTRONIC_ENGINE_CONTROLLER_1, SPN_ENGINE_SPEED, &cap4);
+       printf("VeloCIDAD DEL MOTOR EN RPM : %ld \r", cap4);
+       delay_ms(50);
+      //J1939Task();
+      
+      printf("{%ld,%ld,%ld,%ld} ",captura1, captura2, captura3, cap4);
    }
 }
