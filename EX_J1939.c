@@ -458,7 +458,7 @@ void main()
       
       */
        consulta(PGN_ENGINE_TEMPERATURE, SPN_ENGINE_FUEL_TEMPERATURE_1, &captura1);
-       printf("la temperatura en el main es : %ld \r", captura1);
+      // printf("la temperatura en el main es : %ld \r", captura1);
        delay_ms(50);
 
        
@@ -470,7 +470,7 @@ void main()
       
       */
        consulta(PGN_DASH_DISPLAY, SPN_FUEL_LEVEL_1, &captura2);
-       printf(" el fuel level ES -->  : %ld \r", captura2);
+       //printf(" el fuel level ES -->  : %ld \r", captura2);
        delay_ms(50);
        
        /*
@@ -479,7 +479,7 @@ void main()
        SPN_ENGINE_THROTTLE_POSITION:
        */
        consulta(PGN_FUEL_ECONOMY, SPN_ENGINE_THROTTLE_POSITION, &captura3);
-       printf("Velocidad de consumo : %ld \r", captura3);
+       //printf("Velocidad de consumo : %ld \r", captura3);
        delay_ms(50);
       
       /*
@@ -487,10 +487,10 @@ void main()
       SPN_ENGINE_SPEED
        */
        consulta(PGN_ELECTRONIC_ENGINE_CONTROLLER_1, SPN_ENGINE_SPEED, &cap4);
-       printf("VeloCIDAD DEL MOTOR EN RPM : %ld \r", cap4);
+       //printf("VeloCIDAD DEL MOTOR EN RPM : %ld \r", cap4);
        delay_ms(50);
       //J1939Task();
       
-      printf("{%ld,%ld,%ld,%ld} ",captura1, captura2, captura3, cap4);
+      printf("%ld,%ld,%ld,%ld, \r\n",captura1, captura2, captura3, cap4);
    }
 }
