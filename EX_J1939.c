@@ -491,6 +491,6 @@ void main()
        delay_ms(50);
       //J1939Task();
       
-      printf("%ld,%ld,%ld,%ld, \r\n",captura1, captura2, captura3, cap4);
+      printf("%ld_%ld_%ld_%ld\r\n",captura1, captura2, captura3, cap4);
    }
 }
