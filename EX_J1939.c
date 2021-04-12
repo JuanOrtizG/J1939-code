@@ -444,7 +444,7 @@ void main()
    enable_interrupts(GLOBAL);
   #endif
 
-   int16 captura1,captura2,captura3, cap4, cap5, cap6; 
+   int16 captura1=0,captura2=0,captura3=0, cap4=0, cap5=0, cap6=0; 
    
    J1939Init();  //Initialize J1939 Driver must be called before any other J1939 function is used
    
